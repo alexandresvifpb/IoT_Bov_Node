@@ -488,29 +488,7 @@ String IMULib::euler_angles_to_string(uint64_t epochtime, uint64_t nowtime, Eule
   return _euler_angle_string;
 }
 
-bool scanner(byte address) {
-
-  byte error;
-
-  Serial.print("I2C scanner address: ");
-  Serial.print(" (0x");
-  Serial.print(address, HEX);
-  Serial.println(")");
-
-  Wire.beginTransmission(address);
-  error = Wire.endTransmission();
-
-  if ( error == 0 ) {
-    Serial.println("SUCCESS!!!");
-    return true;
-  }
-  Serial.println("FALL!!!");
-  return false;
-}
-
-
 // Private
-
 
 //
 float IMULib::imu_moving_average_yaw(float value) {
@@ -566,6 +544,9 @@ uint8_t IMULib::imu_classify_behavior(void) {
   return rest;
 }
 
+float IMULib::get_moving_average_pitch(void) {
+  return imu_moving_average_pitch_value;
+}
 
 /**
  * Class BMP280
@@ -613,4 +594,24 @@ float BMP280::get_pressure_pa(void) {
 float BMP280::get_altitude_meter(void) {
   // return bmp.readAltitude(BMP_ADJUSTED_LOCAL_ALTUTUDE);
   return bmp280_sensor.readFloatAltitudeMeters();
+}
+
+bool scanner(byte address) {
+
+  byte error;
+
+  Serial.print("I2C scanner address: ");
+  Serial.print(" (0x");
+  Serial.print(address, HEX);
+  Serial.println(")");
+
+  Wire.beginTransmission(address);
+  error = Wire.endTransmission();
+
+  if ( error == 0 ) {
+    Serial.println("SUCCESS!!!");
+    return true;
+  }
+  Serial.println("FALL!!!");
+  return false;
 }

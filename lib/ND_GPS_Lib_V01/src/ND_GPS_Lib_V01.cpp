@@ -78,7 +78,36 @@ boolean GPSLib::new_record(void) {
 }
 
 // 
-String GPSLib::get_record(long nowtime) {
+String GPSLib::get_string_record(data_gps_t data_gps, long nowtime) {
+
+  String result = "[";
+  result += 1;
+  result += ",";
+  result += String((unsigned long)data_gps.epochTime);
+  result += ",";
+  result += String((unsigned long)nowtime);
+  result += ",";
+  result += String(data_gps.latitude, 6);
+  result += ",";
+  result += String(data_gps.longitude, 6);
+  result += ",";
+  result += data_gps.altitude;
+  result += ",";
+  result += data_gps.speed;
+  result += ",";
+  result += data_gps.course;
+  result += ",";
+  result += data_gps.distanceBetweenTwoPoints;
+  result += ",";
+  result += data_gps.age;
+  result += ",";
+  result += data_gps.satellites;
+  result += ",";
+  result += data_gps.hdop;
+  result += "]";
+  return result;
+
+/*
   String result = "[";
   result += 1;
   result += ",";
@@ -105,6 +134,12 @@ String GPSLib::get_record(long nowtime) {
   result += currentPosition.hdop;
   result += "]";
   return result;
+*/
+}
+
+// 
+data_gps_t GPSLib::get_record(void) {
+  return currentPosition;
 }
 
 //

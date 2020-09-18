@@ -32,6 +32,13 @@
 #define IA_TASK_DELAY_MS                  1
 #define MOVING_AVERAGE_ARRAY_SIZE         10
 
+typedef struct {
+  double gps_speed;
+  uint32_t gps_age;
+  double gps_distanceBetweenTwoPoints;
+  float imu_Pitch;
+} behavior_t;
+
 // #ifdef __cplusplus
 // extern "C" {
 // #endif

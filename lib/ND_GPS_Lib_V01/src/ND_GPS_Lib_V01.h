@@ -39,7 +39,8 @@ class GPSLib
     boolean begin(String id);
     void run(void);
     boolean new_record(void);
-    String get_record(long nowtime);
+    data_gps_t get_record(void);
+    String get_string_record(data_gps_t data_gps, long nowtime);
     unsigned long epochtime(void);
 
   private:

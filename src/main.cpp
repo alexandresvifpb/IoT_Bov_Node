@@ -3,7 +3,7 @@
 #include "esp_task_wdt.h"
                                         // https://github.com/alexandresvifpb/IoT_Bov_Node_Ver-01.git
                                         // D:\Users\alexa\OneDrive\doutorado\2020\prototipos\firmware\node\Node_LoRa_GPS_IMU_IA_TTGO-TBeam_V01          // localizacao do projeto
-#define MAIN_MESSAGE_INITIAL            ("D:\\Users\\alexa\\OneDrive\\doutorado\\2020\\prototipos\\firmware\\tests\\Node_LoRa_GPS_IMU_IA_TTGO-TBeam_V01.01")
+#define MAIN_MESSAGE_INITIAL            ("D:\\Users\\alexa\\OneDrive\\doutorado\\2020\\prototipos\\firmware\\tests\\Node_LoRa_GPS_IMU_IA_TTGO-TBeam_V01.02")
 #define MAIN_DEBUG                      (true)          // Variable that enables (1) or disables (0) the sending of data by serial to debug the program
 #define MAIN_CORE_0                     (0)             // Defined the core to be used
 #define MAIN_CORE_1                     (1)             
@@ -28,6 +28,8 @@ String device_id = module.get_MAC();
 String gateway_id = "FFFFFF";
 uint8_t device_type = NODE;
 uint16_t boot_sequence = -1;
+behavior_t behavior_paramenters;
+uint8_t behavior = 0;
 
 //===========================================
 //  LoRa SX1276/8
@@ -49,6 +51,7 @@ bool sdCard_enable = false;
 
 GPSLib gps;
 bool gps_enable = false;
+data_gps_t gps_current_data;
 
 //===========================================
 //  Accelerometer & Gyroscope & Magnetometer MPU9255 (GY-91) 10DOF
@@ -213,11 +216,26 @@ void TaskLoRa( void * pvParameters ) {
 
         // Enviar resposta com dados do GPS
         if (gps_enable) {
+
+          // gps_current_data = gps.get_record();      // pega dados do modulo gps
+
+          // behavior_paramenters.gps_speed = gps_current_data.speed;
+          // behavior_paramenters.gps_distanceBetweenTwoPoints = gps_current_data.distanceBetweenTwoPoints;
+          // behavior_paramenters.gps_age = gps_current_data.age;
+
+          message_REPLAY.payload = gps.get_string_record(gps_current_data, millis());
+          message_REPLAY.message_id = module.hash(message_REPLAY.payload);
+
+          lora.add_send_message(message_REPLAY);
+          delay(100);
+
+/*
           message_REPLAY.payload = gps.get_record(millis());      // pega dados do modulo gps
           message_REPLAY.message_id = module.hash(message_REPLAY.payload);
 
           lora.add_send_message(message_REPLAY);
           delay(100);
+*/
         }
 
         // Enviar resposta com dados de Euler Angles do IMU
@@ -226,6 +244,8 @@ void TaskLoRa( void * pvParameters ) {
           message_REPLAY.payload = imu_sensor.euler_angles_to_string(request_epochtime_now, millis(), imu_sensor.get_euler_angles(imu_sensor.get_quaternion()));
           // message_REPLAY.payload = imu_last_record;
           message_REPLAY.message_id = module.hash(message_REPLAY.payload);
+
+          behavior_paramenters.imu_Pitch = imu_sensor.get_moving_average_pitch();
 
           lora.add_send_message(message_REPLAY);
           delay(100);
@@ -243,6 +263,10 @@ void TaskLoRa( void * pvParameters ) {
 
         //
         message_REPLAY.payload = "[7," + String((unsigned long)(request_epochtime_now)) + "," + String(module.getVBat(), 2) + "]";
+        message_REPLAY.message_id = module.hash(message_REPLAY.payload);
+        lora.add_send_message(message_REPLAY);
+
+        message_REPLAY.payload = "[8," + String(behavior) + "," + String(module.getVBat(), 2) + "]";
         message_REPLAY.message_id = module.hash(message_REPLAY.payload);
         lora.add_send_message(message_REPLAY);
 
@@ -309,9 +333,19 @@ void TaskGPS( void * pvParameters ) {
 
       gps.run();
 
+      String gps_string_record;
+
       if ( gps.new_record() ) {
 
-        Serial.println(gps.get_record(millis()));
+        gps_current_data = gps.get_record();      // pega dados do modulo gps
+
+        behavior_paramenters.gps_speed = gps_current_data.speed;
+        behavior_paramenters.gps_distanceBetweenTwoPoints = gps_current_data.distanceBetweenTwoPoints;
+        behavior_paramenters.gps_age = gps_current_data.age;
+
+        // Serial.println(gps.get_record(millis()));
+        gps_string_record = gps.get_string_record(gps_current_data, millis());
+        Serial.println(gps_string_record);
 
       }
 
@@ -319,17 +353,20 @@ void TaskGPS( void * pvParameters ) {
 
         if ( millis() > ( gps_last_time + GPS_LAST_TIME ) ) {
 
-          String gps_payload = gps.get_record(millis());
+          // String gps_payload = gps.get_record(millis());
 
           SDCard_record_t new_record;
 
           new_record.id = device_id;
           new_record.bootSequence = boot_sequence;
           new_record.type = TYPE_GPS;
-          new_record.payload = gps_payload;
+          // new_record.payload = gps_payload;
+
+          new_record.payload = gps_string_record;
 
           Serial.print("SDCD_APEN: ");
-          Serial.println(gps_payload);
+          // Serial.println(gps_payload);
+          Serial.println(gps_string_record);
             
           sdCard.add_record(new_record);
 
@@ -377,6 +414,27 @@ void TaskIMU( void * pvParameters ) {
           // pega a string com todos os dados do imu
           imu_last_record = imu_sensor.get_string_data_imu(imu_epochtime_now, millis(), boot_sequence);
 
+          //
+          if ( (behavior_paramenters.imu_Pitch > -60) && (behavior_paramenters.imu_Pitch < -35) ) {
+            behavior = 0;
+          }
+
+          if ( (behavior_paramenters.gps_speed < 1.00) && (behavior_paramenters.gps_distanceBetweenTwoPoints == 0 && (behavior_paramenters.gps_age < 5000))) {
+            behavior = 1;
+          }
+
+          if ( (behavior_paramenters.imu_Pitch > -20) && (behavior_paramenters.imu_Pitch < 30) ) {
+            if ( behavior_paramenters.gps_speed >= 1.00 && behavior_paramenters.gps_age < 5000 ) {
+              behavior = 2;
+            }
+          }
+
+          if ( (behavior_paramenters.imu_Pitch > 35) && (behavior_paramenters.imu_Pitch < 70) ) {
+            behavior = 3;
+          }
+
+          imu_last_record += ",";
+          imu_last_record += String(behavior);
           imu_last_record += ",";
           imu_last_record += String(bmp_sensor.get_pressure_pa(), 2);
           imu_last_record += ",";

@@ -113,6 +113,8 @@ class IMULib {
 
     String euler_angles_to_string(uint64_t epochtime, uint64_t nowtime, EulerAngles_t euler_angle);           // gabiarra para retorna apenas os dados do Euler Angle
 
+    float get_moving_average_pitch(void);
+
     private:
 
     float imu_moving_average_yaw(float value);
